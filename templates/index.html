@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Historical Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; }
+        #map { height: 600px; width: 100%; }
+        #slider-container { text-align: center; margin: 10px; }
+        #add-story, #edit-story, #story-list { margin: 20px; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; display: block; }
+        #story-list { max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h2>Family Historical Map</h2>
+    <div id="slider-container">
+        <label for="year-slider">Select Year:</label>
+        <input type="range" id="year-slider" min="1400" max="2025" step="10" value="1600">
+        <span id="selected-year">1600</span>
+    </div>
+    <div id="map"></div>
+
+    <div id="story-list">
+        <h3>Story List</h3>
+        <input type="text" id="search" placeholder="Search by name..." onkeyup="filterStories()">
+        <ul id="stories"></ul>
+    </div>
+
+    <div id="add-story">
+        <h3>Add a New Person Story</h3>
+        <label>Person's Name: <input type="text" id="name"></label><br>
+        <label>Event Year: <input type="number" id="year"></label><br>
+        <label>Latitude: <input type="text" id="lat"></label><br>
+        <label>Longitude: <input type="text" id="lon"></label><br>
+        <label>Geni Profile Link: <input type="text" id="link"></label><br>
+        <label>Story:<br><textarea id="story"></textarea></label><br>
+        <label>Parent ID (Optional): <input type="number" id="parent_id"></label><br>
+        <button onclick="addStory()">Add</button>
+    </div>
+
+    <div id="edit-story" style="display:none;">
+        <h3>Edit Story</h3>
+        <input type="hidden" id="edit-id">
+        <label>Name: <input type="text" id="edit-name"></label><br>
+        <label>Year: <input type="number" id="edit-year"></label><br>
+        <label>Latitude: <input type="text" id="edit-lat"></label><br>
+        <label>Longitude: <input type="text" id="edit-lon"></label><br>
+        <label>Link: <input type="text" id="edit-link"></label><br>
+        <label>Story:<br><textarea id="edit-story-text"></textarea></label><br>
+        <label>Parent ID (Optional): <input type="number" id="edit-parent_id"></label><br>
+        <button onclick="updateStory()">Update</button>
+        <button onclick="cancelEdit()">Cancel</button>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var map = L.map('map').setView([60.1699, 24.9384], 5);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            setTimeout(function () {
+                map.invalidateSize();
+            }, 500);
+
+            var markers = [];
+
+            function fetchData(selectedYear) {
+                $.getJSON('/get_data', function (data) {
+                    markers.forEach(marker => map.removeLayer(marker));
+                    markers = [];
+                    document.getElementById('stories').innerHTML = '';
+                    
+                    data.forEach(person => {
+                        if (person.year <= selectedYear) {
+                            var popupContent = `<b>${person.name}</b><br>
+                                               <a href='${person.link}' target='_blank'>More Info</a><br>
+                                               <p>${person.story}</p>
+                                               <p>Parent ID: ${person.parent_id || 'None'}</p>
+                                               <button onclick="editStory(${person.id}, '${person.name}', ${person.year}, ${person.lat}, ${person.lon}, '${person.link}', '${person.story}', ${person.parent_id})">Edit</button>`;
+                            
+                            var marker = L.marker([person.lat, person.lon]).addTo(map)
+                                .bindPopup(popupContent);
+                            markers.push(marker);
+                            
+                            var listItem = `<li>${person.name} (${person.year}) - Parent ID: ${person.parent_id || 'None'} - <button onclick="editStory(${person.id}, '${person.name}', ${person.year}, ${person.lat}, ${person.lon}, '${person.link}', '${person.story}', ${person.parent_id})">Edit</button></li>`;
+                            document.getElementById('stories').innerHTML += listItem;
+                        }
+                    });
+                });
+            }
+
+            function filterStories() {
+                var input = document.getElementById('search').value.toLowerCase();
+                var stories = document.getElementById('stories').getElementsByTagName('li');
+                for (var i = 0; i < stories.length; i++) {
+                    var text = stories[i].textContent.toLowerCase();
+                    stories[i].style.display = text.includes(input) ? '' : 'none';
+                }
+            }
+
+            document.getElementById('year-slider').addEventListener('input', function () {
+                var selectedYear = this.value;
+                document.getElementById('selected-year').innerText = selectedYear;
+                fetchData(selectedYear);
+            });
+
+            fetchData(1600);
+        });
+    </script>
+</body>
+</html>

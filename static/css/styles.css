@@ -1,0 +1,4 @@
+html, body { height: 100%; margin: 0; padding: 0; }
+#map { height: 600px; width: 100%; }
+#slider-container { text-align: center; margin: 10px; }
+#add-story { margin: 20px; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; }
